@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f8a70">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Mindful Fit</title>
+<style>
+:root{box-sizing:border-box;--bg:#f4f7f8;--card:#fff;--text:#1d2830;--mut:#5d6b76;--line:#dbe3e8;--acc:#1f8a70;--accbg:#e3f4ef;--warn:#c0392b;
+padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10181d;--card:#19242b;--text:#e8eef2;--mut:#9aa9b4;--line:#2b3943;--acc:#3ddc97;--accbg:#173a30;--warn:#ff7b6b}}
+:root[data-theme="dark"]{--bg:#10181d;--card:#19242b;--text:#e8eef2;--mut:#9aa9b4;--line:#2b3943;--acc:#3ddc97;--accbg:#173a30;--warn:#ff7b6b}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:520px;margin:0 auto;padding:14px 14px 96px}
+h1{font-size:22px;margin:4px 0 2px}h2{font-size:17px;margin:0 0 6px}
+.sub{color:var(--mut);font-size:13px;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 12px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.chip{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:99px;padding:8px 13px;font:inherit;font-size:14px;cursor:pointer}
+.chip.on{background:var(--accbg);color:var(--acc);border-color:var(--acc);font-weight:600}
+label{display:block;font-size:12px;color:var(--mut);margin:8px 0 2px}
+input,select{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font:inherit}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn{width:100%;margin-top:12px;padding:13px;border:0;border-radius:12px;background:var(--acc);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+.btn.alt{background:transparent;color:var(--text);border:1px solid var(--line)}
+:root[data-theme="dark"] .btn,@media (prefers-color-scheme:dark){}
+.row{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px solid var(--line);font-size:14px}.row:first-child{border-top:0}
+.row span:last-child{color:var(--mut);text-align:right}
+.msg{background:var(--accbg);color:var(--text);border-radius:10px;padding:10px;margin-top:10px;font-size:14px;white-space:pre-line}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;border:0;background:transparent;color:var(--mut);padding:11px 0 9px;font:inherit;font-size:12px;cursor:pointer}
+nav button.on{color:var(--acc);font-weight:700}
+textarea{width:100%;min-height:120px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font:12px monospace}
+.small{font-size:12px;color:var(--mut)}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<nav id="nav"></nav>
+<script>
+var KEY="mindfulfit_v1",TABS=[["today","Today"],["log","Log"],["checkin","Check-in"],["more","Backup"]];
+var D={sets:[],cardio:[],sessions:[],checkins:{},bw:"50"},U={tab:"today",rd:3,type:"Upper",f:{},acts:[],col:"Green",msg:""};
+function load(){try{var r=localStorage.getItem(KEY);if(r)D=Object.assign(D,JSON.parse(r))}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){U.msg="Could not save on this browser. Please use the Backup tab."}}
+function pad(n){return(n<10?"0":"")+n}
+function iso(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())}
+function today(){return iso(new Date())}
+function dt(s){var p=s.split("-");return new Date(+p[0],+p[1]-1,+p[2])}
+function addDays(s,n){var d=dt(s);d.setDate(d.getDate()+n);return iso(d)}
+function diff(a,b){return Math.round((dt(a)-dt(b))/864e5)}
+function monday(s){var d=dt(s),w=(d.getDay()+6)%7;return addDays(s,-w)}
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+var EX=["Squat","Bench","Angled Leg Press","Machine Incline Press","Dumbbell Incline Bench Press","Smith Machine Flat Press","Pectoral Flies","Seated Rows","Lat Pulldowns","T-Bar Rows","Weighted Pullups and Dips","Barbell Bicep Curls","Hammer Curls","Tricep Pushdowns","Overhead Tricep Extensions","Lat Raises","Hip Abduction","Hip Adduction","Calf Raises","Lunges","Leg Extensions","Deadlift"];
+var LOWER=["Squat","Angled Leg Press","Hip Abduction","Hip Adduction","Calf Raises","Lunges","Leg Extensions","Deadlift"];
+var CARDIO=["Jog","Cycling","Gradient Walk","Stairmaster Climb","Treadmill Run","Light Hike","Uneven Terrain Walk"];
+var TARGET={Upper:2,Lower:2,Full:1,Cardio:1},LABEL={Upper:"Upper Body",Lower:"Lower Body",Full:"Full Body (Light)",Cardio:"Cardio"};
+var FEEL=[["restless","Restless"],["low","Low"],["anxious","Anxious"],["flat","Flat or numb"],["joyful","Joyful"],["grateful","Grateful"],["energised","Energised"],["calm","Calm or at ease"],["interested","Interested in something"]],HEAVY=["restless","low","anxious","flat"];
+var ACTS=[["strength","Strength"],["cardio","Cardio"],["outdoors","Outdoors / stroll"],["yoga_meditation","Yoga / meditation"],["breathwork","Breathwork"],["social","Chat with someone"]];
+var MSG={Green:"A steady morning. Your usual routine looks like a good fit.",Orange:"A mixed morning. A lighter session and some time outdoors could suit you.",Red:"A heavy morning. Be gentle with yourself: keep training light or rest, get outside if you can, and reach out to someone you trust if it lingers."};
+function reg(l){return LOWER.indexOf(l)>-1?"Lower":"Upper"}
+function e1(l,r,p){return l/(1.0278-0.0278*r)*(1+(10-p)*.02)}
+function best1rm(lift){var rows=D.sets.filter(function(s){return s.lift===lift&&s.rpe!==""&&s.reps>=1&&s.reps<=10});if(!rows.length)return null;
+  var t=today(),rec=rows.filter(function(s){return diff(t,s.d)<=56});if(!rec.length){var last=rows.map(function(s){return s.d}).sort().pop();rec=rows.filter(function(s){return s.d===last})}
+  return Math.max.apply(null,rec.map(function(s){return e1(s.load,s.reps,s.rpe)}))}
+function kindsOn(d){return D.sessions.filter(function(s){return s.d===d}).map(function(s){return s.t})}
+function regions(k){return k==="Upper"?["U"]:k==="Lower"?["L"]:k==="Full"?["U","L"]:[]}
+function nextSession(score){
+  var t=today(),ws=monday(t),done={};
+  D.sessions.forEach(function(s){if(s.d>=ws&&s.d<=t)done[s.t]=(done[s.t]||0)+1});
+  var tk=kindsOn(t),prev=tk.length?tk:kindsOn(addDays(t,-1)),pr=[];prev.forEach(function(k){pr=pr.concat(regions(k))});
+  var low=score===2||score===3,shift=low?{Upper:-.75,Lower:-.75,Full:.25,Cardio:.5}:{Cardio:-.3,Full:-.2},best=null,bp=-99,why="";
+  Object.keys(TARGET).forEach(function(k){var left=TARGET[k]-(done[k]||0);if(left<=0)return;
+    var last=D.sessions.filter(function(s){return s.t===k&&s.d<=t}).map(function(s){return s.d}).sort().pop(),ds=last?Math.min(diff(t,last),30):30;
+    var ov=regions(k).some(function(r){return pr.indexOf(r)>-1}),p=left+ds/300-(ov?1.5:0)+(shift[k]||0);
+    if(p>bp){bp=p;best=k;why=left+" "+LABEL[k]+" session"+(left>1?"s":"")+" left this week"}});
+  return{kind:best,why:why,done:done,today:tk}}
+function modal(arr){var c={};arr.forEach(function(v){c[v]=(c[v]||0)+1});var m=0,k=null;Object.keys(c).forEach(function(x){if(c[x]>m||(c[x]===m&&+x>+k)){m=c[x];k=x}});return +k}
+function accessories(region,limit){
+  var rows=D.sets.filter(function(s){return s.r===region&&s.lift!=="Squat"&&s.lift!=="Bench"});if(!rows.length)return[];
+  var days=Array.from(new Set(rows.map(function(s){return s.d}))).sort().slice(-4),freq={};
+  days.forEach(function(d){Array.from(new Set(rows.filter(function(s){return s.d===d}).map(function(s){return s.lift}))).forEach(function(l){freq[l]=(freq[l]||0)+1})});
+  var need=days.length>=3?2:1;return Object.keys(freq).filter(function(l){return freq[l]>=need}).sort(function(a,b){return freq[b]-freq[a]}).slice(0,limit)}
+function accLine(lift,low){
+  var rows=D.sets.filter(function(s){return s.lift===lift}),ld=rows.map(function(s){return s.d}).sort().pop(),last=rows.filter(function(s){return s.d===ld}),
+  load=modal(last.map(function(s){return s.load})),work=last.filter(function(s){return s.load===load}),sets=Math.max(work.length,Math.min(last.length,3)),
+  reps=work.map(function(s){return s.reps}).sort(function(a,b){return a-b})[Math.floor((work.length-1)/2)],rp=work.filter(function(s){return s.rpe!==""}).map(function(s){return s.rpe}),
+  avg=rp.length?rp.reduce(function(a,b){return a+b},0)/rp.length:null,hist=" (last "+ld.slice(5)+": "+load+" kg x "+reps+" x "+work.length+(avg!==null?" @ RPE "+(Math.round(avg*2)/2):"")+")";
+  if(low)return lift+": "+Math.min(sets,2)+" x "+reps+" @ "+load+" kg, keep it around RPE 7"+hist;
+  if(avg!==null&&avg<=7.5)return lift+": "+sets+" x "+reps+" @ "+(load+2.5)+" kg, +2.5 as it felt easy"+hist;
+  return lift+": "+sets+" x "+reps+" @ "+load+" kg, same weight"+hist}
+function mainLine(lift,low){var e=best1rm(lift);if(e===null)return lift+": log a few sets with an RPE first";
+  var pc=low?.80:.82,n=low?1:3,w=Math.round(e*pc/2.5)*2.5;return lift+": "+n+" set"+(n>1?"s":"")+" x 5 reps @ "+w+" kg"}
+function planHTML(score){
+  var low=score===2||score===3,r=nextSession(score),t=today(),ws=monday(t),h="";
+  h+='<p class="sub">This week: '+Object.keys(TARGET).map(function(k){return LABEL[k]+" "+(r.done[k]||0)+"/"+TARGET[k]}).join(", ")+"</p>";
+  if(score===1)return h+'<div class="msg">Recovery day: keep it light. A gentle walk, stretching or breathwork is plenty.</div>';
+  if(!D.sessions.length&&!D.sets.length)return h+'<div class="msg">Log a few sessions and I will tailor suggestions to your own training. Until then, a steady session of your choice is a good start.</div>';
+  if(r.today.length)h+='<p class="sub">You already trained today ('+r.today.map(function(k){return LABEL[k]}).join(" + ")+"). Next suggested session:</p>";
+  if(!r.kind)return h+'<div class="msg">All sessions for this week are done. Optional: extra cardio, mobility or rest.</div>';
+  var k=r.kind;h+="<h2>"+LABEL[k].toUpperCase()+" day</h2><p class=\"sub\">"+r.why+"</p>";
+  if(k==="Cardio"){var cd=D.sessions.filter(function(s){return s.t==="Cardio"}).map(function(s){return s.d}).sort().pop(),ca=cd?D.cardio.filter(function(c){return c.d===cd}):[];
+    h+='<div class="msg">'+(ca.length?"Last cardio day ("+cd.slice(5)+"): "+ca.map(function(c){return esc(c.act)+" "+c.min+" min"}).join(", ")+"\n":"")+(low?"Keep it easy: about 15 to 25 minutes at a pace where you can talk in full sentences.":ca.length?"Repeat that session, and add 2 to 5 minutes if it felt comfortable.":"20 to 30 minutes of easy jogging, cycling or brisk walking.")+"</div>";return h}
+  var lite=k==="Full"||low,mains=k==="Upper"?["Bench"]:k==="Lower"?["Squat"]:["Squat","Bench"],regs=k==="Full"?["Upper","Lower"]:[k],ex=[];
+  regs.forEach(function(g){ex=ex.concat(accessories(g,k==="Full"?3:6))});
+  h+='<div class="card"><h2>Main lift'+(mains.length>1?"s":"")+"</h2>"+mains.map(function(l){return'<div class="row"><span>'+esc(mainLine(l,lite))+"</span></div>"}).join("")+"</div>";
+  h+='<div class="card"><h2>Accessories</h2>'+(ex.length?ex.map(function(l){return'<div class="row"><span>'+esc(accLine(l,lite))+"</span></div>"}).join(""):'<p class="sub">No recent accessory history yet.</p>')+"</div>";
+  return h+'<p class="sub">Finish with your usual core and mobility work. '+(k==="Full"?"Full-body days are always light.":"")+"</p>"}
+function light(c){var p=0,why=[];
+  if(c.sh<5){p+=2;why.push("short sleep")}else if(c.sh<7){p+=1;why.push("a little under 7 hours of sleep")}
+  if(c.sq<=4){p+=2;why.push("low sleep quality")}else if(c.sq<=6){p+=1;why.push("so-so sleep quality")}
+  var x={1:3,2:2,3:1}[c.rd]||0;if(x){p+=x;why.push("overall readiness "+c.rd+"/5")}
+  HEAVY.forEach(function(f){if(c.f[f]){p+=1;why.push("feeling "+f)}});
+  FEEL.forEach(function(f){if(HEAVY.indexOf(f[0])<0&&c.f[f[0]])p-=1});
+  var col=p>=7?"Red":p>=3?"Orange":"Green";return{col:col,text:"Light: "+col+". "+MSG[col]+(why.length?"\nWeighing on it: "+why.join(", ")+".":"")}}
+function chips(a,list,cur,multi){return'<div class="chips">'+list.map(function(i){var v=i[0],on=multi?cur.indexOf(v)>-1:String(cur)===String(v);return'<button class="chip'+(on?" on":"")+'" data-a="'+a+'" data-v="'+v+'">'+esc(i[1])+"</button>"}).join("")+"</div>"}
+function inp(k,label,type,extra){return"<label>"+label+'</label><input data-k="'+k+'" type="'+(type||"text")+'" value="'+esc(U[k]===undefined?"":U[k])+'" '+(extra||"")+">"}
+function recent(){var all=D.sets.slice(-4).map(function(s){return{d:s.d,t:s.lift+": "+s.load+" kg x "+s.reps+(s.rpe!==""?" @ "+s.rpe:"")}}).concat(D.cardio.slice(-2).map(function(c){return{d:c.d,t:c.act+": "+c.min+" min"+(c.km?", "+c.km+" km":"")}}));
+  all.sort(function(a,b){return a.d<b.d?-1:1});return all.slice(-5).map(function(r){return'<div class="row"><span>'+esc(r.t)+"</span><span>"+r.d.slice(5)+"</span></div>"}).join("")}
+function view(){var h="";
+  if(U.tab==="today"){var ci=D.checkins[today()];if(ci&&!U.rdSet){U.rd=ci.rd;U.rdSet=1}
+    h='<h1>Today</h1><p class="sub">Overall readiness: body and mind</p>'+chips("rd",[1,2,3,4,5].map(function(n){return[n,n]}),U.rd)+planHTML(U.rd)}
+  if(U.tab==="log"){var c=U.type==="Cardio";
+    h='<h1>Log</h1><p class="sub">Session type</p>'+chips("type",Object.keys(LABEL).map(function(k){return[k,LABEL[k]]}),U.type)+inp("d","Date","date")+
+    (c?"<label>Activity</label><input data-k=\"act\" list=\"cl\" value=\""+esc(U.act||"Jog")+"\"><datalist id=\"cl\">"+CARDIO.map(function(a){return"<option value=\""+a+"\">"}).join("")+"</datalist>"+'<div class="g2"><div>'+inp("min","Minutes","number",'inputmode="decimal"')+"</div><div>"+inp("km","Distance (km, optional)","number",'inputmode="decimal"')+"</div></div>"+inp("crpe","RPE 1-10 (optional)","number",'inputmode="decimal"')
+    :"<label>Exercise</label><input data-k=\"lift\" list=\"el\" value=\""+esc(U.lift||"Squat")+"\"><datalist id=\"el\">"+EX.map(function(a){return"<option value=\""+a+"\">"}).join("")+"</datalist>"+'<div class="g2"><div>'+inp("load","Load (kg)","number",'inputmode="decimal"')+"</div><div>"+inp("reps","Reps","number",'inputmode="numeric"')+"</div><div>"+inp("rpe","RPE 1-10","number",'inputmode="decimal"')+"</div><div>"+inp("bw","Bodyweight (kg)","number",'inputmode="decimal"')+"</div></div>")+
+    '<button class="btn" data-a="savelog">'+(c?"Save cardio":"Save set")+'</button><button class="btn alt" data-a="markonly">Mark session done (no sets)</button><button class="btn alt" data-a="undo">Undo last entry</button>'+(U.msg?'<div class="msg">'+esc(U.msg)+"</div>":"")+'<h2 style="margin-top:16px">Recent</h2><div class="card">'+(recent()||'<p class="sub">Nothing logged yet.</p>')+"</div>"}
+  if(U.tab==="checkin"){var C=D.checkins[U.cd||today()]||{};
+    h='<h1>Daily check-in</h1><p class="sub">A reflection aid, not an assessment. Skip any day you like.</p><div class="card"><h2>Morning</h2>'+inp("sh","Sleep (hours)","number",'inputmode="decimal"')+"<label>Sleep quality (1-10)</label>"+chips("sq",[1,2,3,4,5,6,7,8,9,10].map(function(n){return[n,n]}),U.sq||"")+"<label>Overall readiness (1-5)</label>"+chips("rd",[1,2,3,4,5].map(function(n){return[n,n]}),U.rd)+"<label>This morning, are you feeling...</label>"+chips("f",FEEL,Object.keys(U.f).filter(function(k){return U.f[k]}),true)+'<button class="btn" data-a="savemorning">Save morning check-in</button>'+(U.light?'<div class="msg">'+esc(U.light)+"</div>":"")+'</div><div class="card"><h2>End of day</h2><p class="sub">How did the whole day feel?</p>'+chips("col",[["Green","Green"],["Orange","Orange"],["Red","Red"]],U.col)+"<label>What did you do today?</label>"+chips("acts",ACTS,U.acts,true)+inp("moment","A small moment of interest, ease or satisfaction (optional)","text",'maxlength="140"')+'<button class="btn" data-a="saveevening">Save evening check-in</button>'+(U.eMsg?'<div class="msg">'+esc(U.eMsg)+"</div>":"")+'</div><p class="small">Your check-ins stay on this phone. If you are struggling, please reach out to someone you trust or a professional.</p>'}
+  if(U.tab==="more"){h='<h1>Backup</h1><p class="sub">Your data lives in this phone’s browser. Copy a backup now and then, in case the browser clears its storage.</p><div class="card"><h2>Copy backup</h2><textarea id="bk" readonly>'+esc(JSON.stringify(D))+'</textarea><button class="btn" data-a="copy">Copy backup</button></div><div class="card"><h2>Restore</h2><textarea id="rs" placeholder="Paste a backup here"></textarea><button class="btn alt" data-a="restore">Restore from pasted backup</button>'+(U.msg?'<div class="msg">'+esc(U.msg)+"</div>":"")+'</div><p class="small">Mindful Fit is a personal reflection and training aid. It is not medical advice or treatment.</p>'}
+  document.getElementById("app").innerHTML=h;
+  document.getElementById("nav").innerHTML=TABS.map(function(t){return'<button class="'+(U.tab===t[0]?"on":"")+'" data-a="tab" data-v="'+t[0]+'">'+t[1]+"</button>"}).join("")}
+document.addEventListener("input",function(e){var k=e.target.getAttribute&&e.target.getAttribute("data-k");if(k)U[k]=e.target.value});
+document.addEventListener("click",function(e){var b=e.target.closest("[data-a]");if(!b)return;var a=b.getAttribute("data-a"),v=b.getAttribute("data-v");U.msg="";
+  if(a==="tab"){U.tab=v}
+  else if(a==="rd"){U.rd=+v;U.rdSet=1}
+  else if(a==="type"){U.type=v}
+  else if(a==="sq"){U.sq=+v}
+  else if(a==="col"){U.col=v}
+  else if(a==="f"){U.f[v]=!U.f[v]}
+  else if(a==="acts"){var i=U.acts.indexOf(v);if(i>-1)U.acts.splice(i,1);else U.acts.push(v)}
+  else if(a==="savelog"||a==="markonly")saveLog(a==="markonly");
+  else if(a==="undo"){if(U.type==="Cardio"&&D.cardio.length){var c=D.cardio.pop();U.msg="Removed "+c.act+" ("+c.d+")."}else if(D.sets.length){var s=D.sets.pop();U.msg="Removed "+s.lift+" ("+s.d+")."}else U.msg="Nothing to undo.";save()}
+  else if(a==="savemorning")saveMorning();
+  else if(a==="saveevening")saveEvening();
+  else if(a==="copy"){var t=document.getElementById("bk");t.select();try{navigator.clipboard.writeText(t.value).then(function(){U.msg="Copied. Paste it somewhere safe.";view()},function(){U.msg="Select the text above and copy it manually.";view()})}catch(x){U.msg="Select the text above and copy it manually."}return}
+  else if(a==="restore"){try{var o=JSON.parse(document.getElementById("rs").value);if(!o||!Array.isArray(o.sets))throw 0;D=Object.assign({sets:[],cardio:[],sessions:[],checkins:{},bw:"50"},o);save();U.msg="Restored."}catch(x){U.msg="That does not look like a Mindful Fit backup."}}
+  view()});
+function addSession(d,t){if(!D.sessions.some(function(s){return s.d===d&&s.t===t}))D.sessions.push({d:d,t:t})}
+function dateOk(){var d=U.d||today();if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||d>today()){U.msg="Please use today or an earlier date.";return null}return d}
+function num(v,lo,hi){var n=parseFloat(v);return isFinite(n)&&n>=lo&&n<=hi?n:null}
+function saveLog(markOnly){var d=dateOk();if(!d)return;
+  if(markOnly){addSession(d,U.type);save();U.msg=LABEL[U.type]+" session recorded for "+d+".";return}
+  if(U.type==="Cardio"){var m=num(U.min,1,600),km=U.km?num(U.km,0,200):"",r=U.crpe?num(U.crpe,1,10):"";
+    if(m===null||km===null||r===null){U.msg="Minutes are needed (1 to 600). Distance and RPE must be numbers or left blank.";return}
+    D.cardio.push({d:d,act:(U.act||"Jog").trim().slice(0,40),min:m,km:km,rpe:r});addSession(d,"Cardio");save();U.msg="Cardio saved.";U.min=U.km=U.crpe="";return}
+  var lift=(U.lift||"").trim().slice(0,40),ld=num(U.load,0.1,1000),rp=num(U.reps,1,100),pe=num(U.rpe,1,10),bw=num(U.bw||D.bw,20,300);
+  if(!lift||ld===null||rp===null||pe===null||bw===null||rp!==Math.round(rp)){U.msg="Please fill in exercise, load, whole reps, RPE (1 to 10) and bodyweight.";return}
+  D.bw=String(bw);D.sets.push({d:d,lift:lift,load:ld,reps:rp,rpe:pe,bw:bw,r:EX.indexOf(lift)>-1?reg(lift):(U.type==="Lower"?"Lower":"Upper")});addSession(d,U.type);save();U.msg=lift+" saved. Session: "+LABEL[U.type]+".";U.load=U.reps=U.rpe=""}
+function saveMorning(){var sh=num(U.sh,0,16);if(sh===null||!U.sq){U.light="Please enter sleep hours and pick a sleep quality.";return}
+  var c={sh:sh,sq:U.sq,rd:U.rd,f:Object.assign({},U.f)},old=D.checkins[today()]||{};D.checkins[today()]=Object.assign(old,c);save();U.light="Saved.\n"+light(c).text}
+function saveEvening(){var o=D.checkins[today()]||{};o.col=U.col;o.acts=U.acts.slice();o.moment=(U.moment||"").trim().slice(0,140);D.checkins[today()]=o;save();U.eMsg="Saved: today felt "+U.col+". Thank you for checking in."}
+load();view();
+</script>
+<script>
+if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
+</script>
+</body>
+</html>
