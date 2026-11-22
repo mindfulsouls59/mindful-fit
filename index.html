@@ -44,7 +44,7 @@ textarea{width:100%;min-height:120px;padding:10px;border:1px solid var(--line);b
 <main id="app"></main>
 <nav id="nav"></nav>
 <script>
-var KEY="mindfulfit_v1",TABS=[["today","Today"],["log","Log"],["checkin","Check-in"],["more","Backup"]];
+var KEY="mindfulfit_v1",TABS=[["today","Today"],["log","Log"],["checkin","Check-in"],["progress","Progress"],["more","Backup"]];
 var D={sets:[],cardio:[],sessions:[],checkins:{},bw:"50"},U={tab:"today",rd:3,type:"Upper",f:{},acts:[],col:"Green",msg:""};
 function load(){try{var r=localStorage.getItem(KEY);if(r)D=Object.assign(D,JSON.parse(r))}catch(e){}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){U.msg="Could not save on this browser. Please use the Backup tab."}}
@@ -132,7 +132,8 @@ function view(){var h="";
     '<button class="btn" data-a="savelog">'+(c?"Save cardio":"Save set")+'</button><button class="btn alt" data-a="markonly">Mark session done (no sets)</button><button class="btn alt" data-a="undo">Undo last entry</button>'+(U.msg?'<div class="msg">'+esc(U.msg)+"</div>":"")+'<h2 style="margin-top:16px">Recent</h2><div class="card">'+(recent()||'<p class="sub">Nothing logged yet.</p>')+"</div>"}
   if(U.tab==="checkin"){var C=D.checkins[U.cd||today()]||{};
     h='<h1>Daily check-in</h1><p class="sub">A reflection aid, not an assessment. Skip any day you like.</p><div class="card"><h2>Morning</h2>'+inp("sh","Sleep (hours)","number",'inputmode="decimal"')+"<label>Sleep quality (1-10)</label>"+chips("sq",[1,2,3,4,5,6,7,8,9,10].map(function(n){return[n,n]}),U.sq||"")+"<label>Overall readiness (1-5)</label>"+chips("rd",[1,2,3,4,5].map(function(n){return[n,n]}),U.rd)+"<label>This morning, are you feeling...</label>"+chips("f",FEEL,Object.keys(U.f).filter(function(k){return U.f[k]}),true)+'<button class="btn" data-a="savemorning">Save morning check-in</button>'+(U.light?'<div class="msg">'+esc(U.light)+"</div>":"")+'</div><div class="card"><h2>End of day</h2><p class="sub">How did the whole day feel?</p>'+chips("col",[["Green","Green"],["Orange","Orange"],["Red","Red"]],U.col)+"<label>What did you do today?</label>"+chips("acts",ACTS,U.acts,true)+inp("moment","A small moment of interest, ease or satisfaction (optional)","text",'maxlength="140"')+'<button class="btn" data-a="saveevening">Save evening check-in</button>'+(U.eMsg?'<div class="msg">'+esc(U.eMsg)+"</div>":"")+'</div><p class="small">Your check-ins stay on this phone. If you are struggling, please reach out to someone you trust or a professional.</p>'}
-  if(U.tab==="more"){h='<h1>Backup</h1><p class="sub">Your data lives in this phone’s browser. Copy a backup now and then, in case the browser clears its storage.</p><div class="card"><h2>Copy backup</h2><textarea id="bk" readonly>'+esc(JSON.stringify(D))+'</textarea><button class="btn" data-a="copy">Copy backup</button></div><div class="card"><h2>Restore</h2><textarea id="rs" placeholder="Paste a backup here"></textarea><button class="btn alt" data-a="restore">Restore from pasted backup</button>'+(U.msg?'<div class="msg">'+esc(U.msg)+"</div>":"")+'</div><p class="small">Mindful Fit is a personal reflection and training aid. It is not medical advice or treatment.</p>'}
+  if(U.tab==="progress"){h=progressHTML()}
+  if(U.tab==="more"){h='<h1>Backup</h1><p class="sub">Your data lives in this phone’s browser. Copy a backup now and then, in case the browser clears its storage.</p><div class="card"><h2>Copy backup</h2><textarea id="bk" readonly>'+esc(JSON.stringify(D))+'</textarea><button class="btn" data-a="copy">Copy backup</button></div><div class="card"><h2>Restore</h2><textarea id="rs" placeholder="Paste a backup here"></textarea><button class="btn alt" data-a="restore">Restore from pasted backup</button>'+(U.msg?'<div class="msg">'+esc(U.msg)+"</div>":"")+'</div>'+importCard()+'<p class="small">Mindful Fit is a personal reflection and training aid. It is not medical advice or treatment.</p>'}
   document.getElementById("app").innerHTML=h;
   document.getElementById("nav").innerHTML=TABS.map(function(t){return'<button class="'+(U.tab===t[0]?"on":"")+'" data-a="tab" data-v="'+t[0]+'">'+t[1]+"</button>"}).join("")}
 document.addEventListener("input",function(e){var k=e.target.getAttribute&&e.target.getAttribute("data-k");if(k)U[k]=e.target.value});
@@ -149,6 +150,7 @@ document.addEventListener("click",function(e){var b=e.target.closest("[data-a]")
   else if(a==="savemorning")saveMorning();
   else if(a==="saveevening")saveEvening();
   else if(a==="copy"){var t=document.getElementById("bk");t.select();try{navigator.clipboard.writeText(t.value).then(function(){U.msg="Copied. Paste it somewhere safe.";view()},function(){U.msg="Select the text above and copy it manually.";view()})}catch(x){U.msg="Select the text above and copy it manually."}return}
+  else if(a==="import"){var fs=document.getElementById("csvf").files;if(!fs.length){U.msg="Please choose your CSV files first."}else{var nf=fs.length,dn=0,out=[];Array.prototype.forEach.call(fs,function(f){var r=new FileReader();r.onload=function(){try{out.push(importText(String(r.result)))}catch(x){out.push("could not read "+f.name)}if(++dn===nf){save();U.msg="Imported: "+out.join("; ");view()}};r.onerror=function(){out.push("could not open "+f.name);if(++dn===nf){save();U.msg="Imported: "+out.join("; ");view()}};r.readAsText(f)});return}}
   else if(a==="restore"){try{var o=JSON.parse(document.getElementById("rs").value);if(!o||!Array.isArray(o.sets))throw 0;D=Object.assign({sets:[],cardio:[],sessions:[],checkins:{},bw:"50"},o);save();U.msg="Restored."}catch(x){U.msg="That does not look like a Mindful Fit backup."}}
   view()});
 function addSession(d,t){if(!D.sessions.some(function(s){return s.d===d&&s.t===t}))D.sessions.push({d:d,t:t})}
@@ -165,6 +167,34 @@ function saveLog(markOnly){var d=dateOk();if(!d)return;
 function saveMorning(){var sh=num(U.sh,0,16);if(sh===null||!U.sq){U.light="Please enter sleep hours and pick a sleep quality.";return}
   var c={sh:sh,sq:U.sq,rd:U.rd,f:Object.assign({},U.f)},old=D.checkins[today()]||{};D.checkins[today()]=Object.assign(old,c);save();U.light="Saved.\n"+light(c).text}
 function saveEvening(){var o=D.checkins[today()]||{};o.col=U.col;o.acts=U.acts.slice();o.moment=(U.moment||"").trim().slice(0,140);D.checkins[today()]=o;save();U.eMsg="Saved: today felt "+U.col+". Thank you for checking in."}
+
+function parseCSV(t){var rows=[],r=[],f="",q=0,i,c;t=t.replace(/^\uFEFF/,"");for(i=0;i<t.length;i++){c=t[i];if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++}else q=0}else f+=c}else if(c==='"')q=1;else if(c===","){r.push(f);f=""}else if(c==="\n"||c==="\r"){if(c==="\r"&&t[i+1]==="\n")i++;r.push(f);f="";if(r.length>1||r[0]!=="")rows.push(r);r=[]}else f+=c}if(f!==""||r.length){r.push(f);rows.push(r)}return rows}
+function csvObjs(t){var R=parseCSV(t);if(R.length<2)return[];var h=R[0].map(function(x){return x.trim()});return R.slice(1).map(function(r){var o={};h.forEach(function(k,i){o[k]=(r[i]||"").trim()});return o})}
+function nb(v){var n=parseFloat(v);return isFinite(n)?n:""}
+function okd(o,k){return /^\d{4}-\d{2}-\d{2}$/.test(o[k]||"")}
+function swap(arr,fresh){var ds={};fresh.forEach(function(x){ds[x.d]=1});return arr.filter(function(x){return!ds[x.d]}).concat(fresh).sort(function(a,b){return a.d<b.d?-1:a.d>b.d?1:0})}
+function importText(t){var R=csvObjs(t);if(!R.length)return"empty or unreadable file";var h=Object.keys(R[0]),n;
+  if(h.indexOf("lift_type")>-1){var s=R.filter(function(o){return okd(o,"workout_date")&&o.lift_type&&nb(o.load_kg)!==""&&nb(o.reps)!==""}).map(function(o){return{d:o.workout_date,lift:o.lift_type,load:nb(o.load_kg),reps:nb(o.reps),rpe:nb(o.rpe),bw:nb(o.bodyweight_kg),r:reg(o.lift_type)}});D.sets=swap(D.sets,s);return"workout log ("+s.length+" sets)"}
+  if(h.indexOf("activity")>-1){var c=R.filter(function(o){return okd(o,"workout_date")&&o.activity&&nb(o.duration_min)!==""}).map(function(o){return{d:o.workout_date,act:o.activity,min:nb(o.duration_min),km:nb(o.distance_km),rpe:nb(o.rpe)}});D.cardio=swap(D.cardio,c);return"cardio log ("+c.length+" entries)"}
+  if(h.indexOf("session_type")>-1){var q={},z=[];R.forEach(function(o){if(okd(o,"workout_date")&&LABEL[o.session_type]&&!q[o.workout_date+o.session_type]){q[o.workout_date+o.session_type]=1;z.push({d:o.workout_date,t:o.session_type})}});D.sessions=swap(D.sessions,z);return"sessions ("+z.length+")"}
+  if(h.indexOf("checkin_date")>-1){n=0;R.forEach(function(o){if(!okd(o,"checkin_date"))return;var c=D.checkins[o.checkin_date]||{},f={};FEEL.forEach(function(x){if(o[x[0]]!=="")f[x[0]]=o[x[0]]==="1"});if(nb(o.sleep_hours)!=="")c.sh=nb(o.sleep_hours);if(nb(o.sleep_quality)!=="")c.sq=nb(o.sleep_quality);if(nb(o.overall_readiness)!=="")c.rd=nb(o.overall_readiness);if(Object.keys(f).length)c.f=f;if(o.day_colour)c.col=o.day_colour;if(o.activities)c.acts=o.activities.split(";");if(o.moment)c.moment=o.moment;D.checkins[o.checkin_date]=c;n++});return"check-ins ("+n+" days)"}
+  return"not a Mindful Fit file"}
+function wkBest(l){var m={};D.sets.forEach(function(s){if(s.lift!==l||s.rpe===""||s.reps<1||s.reps>10)return;var w=monday(s.d),v=e1(s.load,s.reps,s.rpe);if(!(w in m)||v>m[w])m[w]=v});return m}
+function progressHTML(){var h='<h1>Progress</h1><p class="sub">Squat and Bench, estimated 1RM by week</p>',A=wkBest("Squat"),B=wkBest("Bench"),ks=Object.keys(A).concat(Object.keys(B)).sort();
+  if(!ks.length)return h+'<div class="card">Charts appear once you have logged sets with an RPE. You can also import your laptop files in the Backup tab.</div>';
+  var w0=ks[0],w1=ks[ks.length-1],sp=Math.max(1,diff(w1,w0));
+  function chart(M,col,name){var k=Object.keys(M).sort();if(!k.length)return"";var vs=k.map(function(w){return M[w]}),lo=Math.floor(Math.min.apply(null,vs)/5)*5-5,hi=Math.ceil(Math.max.apply(null,vs)/5)*5+5;
+    function X(w){return 38+diff(w,w0)/sp*266}function Y(v){return 150-(v-lo)/(hi-lo)*128}
+    var g="";[lo,(lo+hi)/2,hi].forEach(function(v){g+='<line x1="38" x2="304" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="var(--line)"/><text x="34" y="'+(Y(v)+3)+'" text-anchor="end" font-size="9" fill="var(--mut)">'+Math.round(v)+'</text>'});
+    g+='<text x="38" y="170" font-size="9" fill="var(--mut)">'+w0.slice(5)+'</text><text x="304" y="170" text-anchor="end" font-size="9" fill="var(--mut)">'+w1.slice(5)+'</text>';
+    g+='<polyline fill="none" stroke="'+col+'" stroke-width="2" points="'+k.map(function(w){return X(w).toFixed(1)+","+Y(M[w]).toFixed(1)}).join(" ")+'"/>'+k.map(function(w){return'<circle cx="'+X(w).toFixed(1)+'" cy="'+Y(M[w]).toFixed(1)+'" r="2.6" fill="'+col+'"/>'}).join("");
+    return'<div class="card"><h2>'+name+'</h2><div class="small">Best estimated 1RM each week (kg)</div><svg viewBox="0 0 320 178" width="100%" role="img" aria-label="Weekly estimated 1RM for '+name+'">'+g+'</svg></div>'}
+  h+=chart(A,"var(--acc)","Squat")+chart(B,"#e08a2c","Bench");
+  var t=today(),mo=monday(t),L="";["Squat","Bench"].forEach(function(l){var M=l==="Squat"?A:B,k=Object.keys(M).sort(),e=best1rm(l);if(e!==null)L+=l+": best of the last 8 weeks ≈ "+Math.round(e)+" kg"+(k.length>1?" (first week logged ≈ "+Math.round(M[k[0]])+" kg)":"")+"\n"});
+  var wk=["Upper","Lower","Full","Cardio"].map(function(x){return LABEL[x]+" "+D.sessions.filter(function(s){return s.t===x&&s.d>=mo}).length+"/"+TARGET[x]}).join(", "),
+  m4=D.sessions.filter(function(s){var d=diff(t,s.d);return d>=0&&d<28}).length,st=D.sets.filter(function(s){var d=diff(t,s.d);return d>=0&&d<28}).length;
+  return h+'<div class="card"><h2>Training summary</h2><div class="msg">'+esc(L+"This week: "+wk+"\nLast 4 weeks: "+m4+" sessions ("+(m4/4).toFixed(1)+" per week), "+st+" sets logged")+'</div><p class="small">Estimated 1RM uses sets logged with an RPE (1 to 10 reps). It is a training guide, not a test of your max.</p></div>'}
+function importCard(){return'<div class="card"><h2>Import laptop files</h2><p class="small">Choose your CSV files (workout_log, cardio_log, sessions, checkins). For every date in a file, the file replaces what is on this phone for that date. Your files stay on this phone.</p><input type="file" id="csvf" accept=".csv,text/csv" multiple><button class="btn alt" data-a="import">Import selected files</button></div>'}
 load();view();
 </script>
 <script>
