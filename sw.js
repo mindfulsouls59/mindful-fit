@@ -1,6 +1,6 @@
 // Saves the app files on the phone so Mindful Fit opens without internet.
 // If you change the app later, change the number in CACHE (v1 -> v2).
-var CACHE = "mindful-fit-v2";
+var CACHE = "mindful-fit-v3";
 var FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(FILES); }));

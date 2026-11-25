@@ -124,7 +124,7 @@ function recent(){var all=D.sets.slice(-4).map(function(s){return{d:s.d,t:s.lift
   all.sort(function(a,b){return a.d<b.d?-1:1});return all.slice(-5).map(function(r){return'<div class="row"><span>'+esc(r.t)+"</span><span>"+r.d.slice(5)+"</span></div>"}).join("")}
 function view(){var h="";
   if(U.tab==="today"){var ci=D.checkins[today()];if(ci&&!U.rdSet){U.rd=ci.rd;U.rdSet=1}
-    h='<h1>Today</h1><p class="sub">Overall readiness: body and mind</p>'+chips("rd",[1,2,3,4,5].map(function(n){return[n,n]}),U.rd)+planHTML(U.rd)}
+    h='<h1>Today</h1><p class="sub">Overall readiness: body and mind</p>'+chips("rd",[1,2,3,4,5].map(function(n){return[n,n]}),U.rd)+streakHTML()+planHTML(U.rd)}
   if(U.tab==="log"){var c=U.type==="Cardio";
     h='<h1>Log</h1><p class="sub">Session type</p>'+chips("type",Object.keys(LABEL).map(function(k){return[k,LABEL[k]]}),U.type)+inp("d","Date","date")+
     (c?"<label>Activity</label><input data-k=\"act\" list=\"cl\" value=\""+esc(U.act||"Jog")+"\"><datalist id=\"cl\">"+CARDIO.map(function(a){return"<option value=\""+a+"\">"}).join("")+"</datalist>"+'<div class="g2"><div>'+inp("min","Minutes","number",'inputmode="decimal"')+"</div><div>"+inp("km","Distance (km, optional)","number",'inputmode="decimal"')+"</div></div>"+inp("crpe","RPE 1-10 (optional)","number",'inputmode="decimal"')
@@ -194,6 +194,8 @@ function progressHTML(){var h='<h1>Progress</h1><p class="sub">Squat and Bench, 
   var wk=["Upper","Lower","Full","Cardio"].map(function(x){return LABEL[x]+" "+D.sessions.filter(function(s){return s.t===x&&s.d>=mo}).length+"/"+TARGET[x]}).join(", "),
   m4=D.sessions.filter(function(s){var d=diff(t,s.d);return d>=0&&d<28}).length,st=D.sets.filter(function(s){var d=diff(t,s.d);return d>=0&&d<28}).length;
   return h+'<div class="card"><h2>Training summary</h2><div class="msg">'+esc(L+"This week: "+wk+"\nLast 4 weeks: "+m4+" sessions ("+(m4/4).toFixed(1)+" per week), "+st+" sets logged")+'</div><p class="small">Estimated 1RM uses sets logged with an RPE (1 to 10 reps). It is a training guide, not a test of your max.</p></div>'}
+function streakDays(t){t=t||today();var a={};D.sets.forEach(function(s){a[s.d]=1});D.sessions.forEach(function(s){a[s.d]=1});D.cardio.forEach(function(c){a[c.d]=1});var n=0,d=a[t]?t:addDays(t,-1);while(a[d]){n++;d=addDays(d,-1)}return n}
+function streakHTML(){var n=streakDays();return n>=2?'<div class="msg">You have maintained a '+n+'-day streak!</div>':""}
 function importCard(){return'<div class="card"><h2>Import laptop files</h2><p class="small">Choose your CSV files (workout_log, cardio_log, sessions, checkins). For every date in a file, the file replaces what is on this phone for that date. Your files stay on this phone.</p><input type="file" id="csvf" accept=".csv,text/csv" multiple><button class="btn alt" data-a="import">Import selected files</button></div>'}
 load();view();
 </script>
