@@ -137,6 +137,7 @@ function view(){var h="";
   document.getElementById("app").innerHTML=h;
   document.getElementById("nav").innerHTML=TABS.map(function(t){return'<button class="'+(U.tab===t[0]?"on":"")+'" data-a="tab" data-v="'+t[0]+'">'+t[1]+"</button>"}).join("")}
 document.addEventListener("input",function(e){var k=e.target.getAttribute&&e.target.getAttribute("data-k");if(k)U[k]=e.target.value});
+document.addEventListener("change",function(e){if(e.target.getAttribute&&e.target.getAttribute("data-k")==="gx"){U.gx=e.target.value;view()}});
 document.addEventListener("click",function(e){var b=e.target.closest("[data-a]");if(!b)return;var a=b.getAttribute("data-a"),v=b.getAttribute("data-v");U.msg="";
   if(a==="tab"){U.tab=v}
   else if(a==="rd"){U.rd=+v;U.rdSet=1}
@@ -189,7 +190,7 @@ function progressHTML(){var h='<h1>Progress</h1><p class="sub">Squat and Bench, 
     g+='<text x="38" y="170" font-size="9" fill="var(--mut)">'+w0.slice(5)+'</text><text x="304" y="170" text-anchor="end" font-size="9" fill="var(--mut)">'+w1.slice(5)+'</text>';
     g+='<polyline fill="none" stroke="'+col+'" stroke-width="2" points="'+k.map(function(w){return X(w).toFixed(1)+","+Y(M[w]).toFixed(1)}).join(" ")+'"/>'+k.map(function(w){return'<circle cx="'+X(w).toFixed(1)+'" cy="'+Y(M[w]).toFixed(1)+'" r="2.6" fill="'+col+'"/>'}).join("");
     return'<div class="card"><h2>'+name+'</h2><div class="small">Best estimated 1RM each week (kg)</div><svg viewBox="0 0 320 178" width="100%" role="img" aria-label="Weekly estimated 1RM for '+name+'">'+g+'</svg></div>'}
-  h+=chart(A,"var(--acc)","Squat")+chart(B,"#e08a2c","Bench")+levelsHTML();
+  h+=chart(A,"var(--acc)","Squat")+chart(B,"#e08a2c","Bench")+levelsHTML()+gxHTML();
   var t=today(),mo=monday(t),L="";["Squat","Bench"].forEach(function(l){var M=l==="Squat"?A:B,k=Object.keys(M).sort(),e=best1rm(l);if(e!==null)L+=l+": best of the last 8 weeks ≈ "+Math.round(e)+" kg"+(k.length>1?" (first week logged ≈ "+Math.round(M[k[0]])+" kg)":"")+"\n"});
   var wk=["Upper","Lower","Full","Cardio"].map(function(x){return LABEL[x]+" "+D.sessions.filter(function(s){return s.t===x&&s.d>=mo}).length+"/"+TARGET[x]}).join(", "),
   m4=D.sessions.filter(function(s){var d=diff(t,s.d);return d>=0&&d<28}).length,st=D.sets.filter(function(s){var d=diff(t,s.d);return d>=0&&d<28}).length;
@@ -208,6 +209,24 @@ function levelsText(t){var L=["Best in the last 8 weeks. Levels: Strength Level,
   if(bw!==null&&Math.abs(bw-50)>=3)L.push("","Note: your bodyweight is "+bw+" kg but the level table is for 50 kg.");
   L.push("","Estimates credit sets that were not all-out, so they run higher than a tested max. Levels compare your estimate with that site's published numbers for a man of this bodyweight.");return L.join("\n")}
 function levelsHTML(){return'<div class="card"><h2>Strength levels</h2><div class="msg">'+esc(levelsText())+'</div></div>'}
+function gxData(l){var m={};D.sets.forEach(function(s){if(s.lift!==l)return;var o=m[s.d]||(m[s.d]={d:s.d,top:0,vol:0,est:null});if(s.load>o.top)o.top=s.load;o.vol+=s.load*s.reps;if(s.rpe!==""&&s.reps>=1&&s.reps<=10){var v=e1(s.load,s.reps,s.rpe);if(o.est===null||v>o.est)o.est=v}});return Object.keys(m).sort().map(function(k){return m[k]})}
+function gxSvg(days,kind){var n=days.length,d0=days[0].d,sp=Math.max(1,diff(days[n-1].d,d0)),vals=[],lo,hi,g="",i;
+  function X(d){return n===1?173:40+diff(d,d0)/sp*266}
+  days.forEach(function(x){if(kind==="vol")vals.push(x.vol);else{vals.push(x.top);if(x.est!==null)vals.push(x.est)}});
+  if(kind==="vol"){lo=0;hi=Math.ceil(Math.max.apply(null,vals)/100)*100||100}else{lo=Math.floor(Math.min.apply(null,vals)/5)*5-5;hi=Math.ceil(Math.max.apply(null,vals)/5)*5+5}
+  function Y(v){return 140-(v-lo)/(hi-lo)*118}
+  [lo,(lo+hi)/2,hi].forEach(function(v){g+='<line x1="40" x2="306" y1="'+Y(v).toFixed(1)+'" y2="'+Y(v).toFixed(1)+'" stroke="var(--line)"/><text x="36" y="'+(Y(v)+3).toFixed(1)+'" text-anchor="end" font-size="9" fill="var(--mut)">'+Math.round(v)+'</text>'});
+  g+='<text x="40" y="156" font-size="9" fill="var(--mut)">'+d0.slice(5)+'</text>'+(n>1?'<text x="306" y="156" text-anchor="end" font-size="9" fill="var(--mut)">'+days[n-1].d.slice(5)+'</text>':"");
+  if(kind==="vol"){var bw=Math.max(3,Math.min(14,266/n*.6));days.forEach(function(x){g+='<rect x="'+(X(x.d)-bw/2).toFixed(1)+'" y="'+Y(x.vol).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+(140-Y(x.vol)).toFixed(1)+'" fill="#8e44ad"/>'})}
+  else{var P=days.map(function(x){return X(x.d).toFixed(1)+","+Y(x.top).toFixed(1)}).join(" "),Q=days.filter(function(x){return x.est!==null}).map(function(x){return X(x.d).toFixed(1)+","+Y(x.est).toFixed(1)});
+    g+='<polyline fill="none" stroke="var(--acc)" stroke-width="2" points="'+P+'"/>'+days.map(function(x){return'<circle cx="'+X(x.d).toFixed(1)+'" cy="'+Y(x.top).toFixed(1)+'" r="2.8" fill="var(--acc)"/>'}).join("");
+    if(Q.length)g+='<polyline fill="none" stroke="#e08a2c" stroke-width="2" stroke-dasharray="5 3" points="'+Q.join(" ")+'"/>'+Q.map(function(q){var c=q.split(",");return'<circle cx="'+c[0]+'" cy="'+c[1]+'" r="2.8" fill="#e08a2c"/>'}).join("")}
+  return'<svg viewBox="0 0 320 162" width="100%" role="img" aria-label="Exercise graph">'+g+"</svg>"}
+function gxHTML(){var have=EX.filter(function(l){return D.sets.some(function(s){return s.lift===l})});D.sets.forEach(function(s){if(have.indexOf(s.lift)<0)have.push(s.lift)});if(!have.length)return"";
+  var sel=have.indexOf(U.gx)>-1?U.gx:have[0],days=gxData(sel);
+  return'<div class="card"><h2>Graph any exercise</h2><select data-k="gx">'+have.map(function(l){return'<option value="'+esc(l)+'"'+(l===sel?" selected":"")+">"+esc(l)+"</option>"}).join("")+'</select>'
+   +'<p class="small"><b style="color:var(--acc)">●</b> Heaviest set (kg) &nbsp; <b style="color:#e08a2c">●</b> Estimated 1RM (kg, dashed)</p>'+gxSvg(days,"str")
+   +'<p class="small">Total volume per session (kg x reps)</p>'+gxSvg(days,"vol")+"</div>"}
 function importCard(){return'<div class="card"><h2>Import laptop files</h2><p class="small">Choose your CSV files (workout_log, cardio_log, sessions, checkins). For every date in a file, the file replaces what is on this phone for that date. Your files stay on this phone.</p><input type="file" id="csvf" accept=".csv,text/csv" multiple><button class="btn alt" data-a="import">Import selected files</button></div>'}
 load();view();
 </script>
