@@ -189,13 +189,25 @@ function progressHTML(){var h='<h1>Progress</h1><p class="sub">Squat and Bench, 
     g+='<text x="38" y="170" font-size="9" fill="var(--mut)">'+w0.slice(5)+'</text><text x="304" y="170" text-anchor="end" font-size="9" fill="var(--mut)">'+w1.slice(5)+'</text>';
     g+='<polyline fill="none" stroke="'+col+'" stroke-width="2" points="'+k.map(function(w){return X(w).toFixed(1)+","+Y(M[w]).toFixed(1)}).join(" ")+'"/>'+k.map(function(w){return'<circle cx="'+X(w).toFixed(1)+'" cy="'+Y(M[w]).toFixed(1)+'" r="2.6" fill="'+col+'"/>'}).join("");
     return'<div class="card"><h2>'+name+'</h2><div class="small">Best estimated 1RM each week (kg)</div><svg viewBox="0 0 320 178" width="100%" role="img" aria-label="Weekly estimated 1RM for '+name+'">'+g+'</svg></div>'}
-  h+=chart(A,"var(--acc)","Squat")+chart(B,"#e08a2c","Bench");
+  h+=chart(A,"var(--acc)","Squat")+chart(B,"#e08a2c","Bench")+levelsHTML();
   var t=today(),mo=monday(t),L="";["Squat","Bench"].forEach(function(l){var M=l==="Squat"?A:B,k=Object.keys(M).sort(),e=best1rm(l);if(e!==null)L+=l+": best of the last 8 weeks ≈ "+Math.round(e)+" kg"+(k.length>1?" (first week logged ≈ "+Math.round(M[k[0]])+" kg)":"")+"\n"});
   var wk=["Upper","Lower","Full","Cardio"].map(function(x){return LABEL[x]+" "+D.sessions.filter(function(s){return s.t===x&&s.d>=mo}).length+"/"+TARGET[x]}).join(", "),
   m4=D.sessions.filter(function(s){var d=diff(t,s.d);return d>=0&&d<28}).length,st=D.sets.filter(function(s){var d=diff(t,s.d);return d>=0&&d<28}).length;
   return h+'<div class="card"><h2>Training summary</h2><div class="msg">'+esc(L+"This week: "+wk+"\nLast 4 weeks: "+m4+" sessions ("+(m4/4).toFixed(1)+" per week), "+st+" sets logged")+'</div><p class="small">Estimated 1RM uses sets logged with an RPE (1 to 10 reps). It is a training guide, not a test of your max.</p></div>'}
 function streakDays(t){t=t||today();var a={};D.sets.forEach(function(s){a[s.d]=1});D.sessions.forEach(function(s){a[s.d]=1});D.cardio.forEach(function(c){a[c.d]=1});var n=0,d=a[t]?t:addDays(t,-1);while(a[d]){n++;d=addDays(d,-1)}return n}
 function streakHTML(){var n=streakDays();return n>=2?'<div class="msg">You have maintained a '+n+'-day streak!</div>':""}
+var LV=["Beginner","Novice","Intermediate","Advanced","Elite"],LVK={Squat:[36,55,78,106,137],Bench:[27,41,58,78,101]};
+function recentSets(l,needE,t){var rows=D.sets.filter(function(s){return s.lift===l&&(!needE||(s.rpe!==""&&s.reps>=1&&s.reps<=10))});if(!rows.length)return[];t=t||today();var rec=rows.filter(function(s){return diff(t,s.d)<=56});if(!rec.length){var last=rows.map(function(s){return s.d}).sort().pop();rec=rows.filter(function(s){return s.d===last})}return rec}
+function levelOf(l,v){var T=LVK[l],top=-1;T.forEach(function(x,i){if(v>=x)top=i});if(top<0)return{name:"Below Beginner",nx:LV[0],kg:T[0],gap:T[0]-v};if(top===T.length-1)return{name:LV[top]};return{name:LV[top],nx:LV[top+1],kg:T[top+1],gap:T[top+1]-v}}
+function levelsText(t){var L=["Best in the last 8 weeks. Levels: Strength Level, male 50 kg.",""],f={},bw=null;
+  ["Squat","Bench"].forEach(function(l){var r=recentSets(l,true,t);if(!r.length){L.push(l+": add a 1-10-rep set with an RPE to get an estimate.");return}
+    var b=r[0],bv=-1;r.forEach(function(s){var v=e1(s.load,s.reps,s.rpe);if(v>bv){bv=v;b=s}});
+    var a=recentSets(l,false,t).slice().sort(function(x,y){return x.load-y.load||x.reps-y.reps}).pop(),lv=levelOf(l,bv);f[l]=bv;if(b.bw!=="")bw=b.bw;
+    L.push(l+": est. 1RM "+bv.toFixed(1)+" kg"+(b.bw!==""?" ("+(bv/b.bw).toFixed(2)+"x BW)":"")+", best set "+a.load+" kg x "+a.reps+"  ->  "+lv.name+(lv.nx?" ("+lv.nx+" at "+lv.kg+" kg, "+lv.gap.toFixed(1)+" kg to go)":""))});
+  if(f.Squat&&f.Bench)L.push("Bench / Squat ratio: "+(f.Bench/f.Squat).toFixed(2));
+  if(bw!==null&&Math.abs(bw-50)>=3)L.push("","Note: your bodyweight is "+bw+" kg but the level table is for 50 kg.");
+  L.push("","Estimates credit sets that were not all-out, so they run higher than a tested max. Levels compare your estimate with that site's published numbers for a man of this bodyweight.");return L.join("\n")}
+function levelsHTML(){return'<div class="card"><h2>Strength levels</h2><div class="msg">'+esc(levelsText())+'</div></div>'}
 function importCard(){return'<div class="card"><h2>Import laptop files</h2><p class="small">Choose your CSV files (workout_log, cardio_log, sessions, checkins). For every date in a file, the file replaces what is on this phone for that date. Your files stay on this phone.</p><input type="file" id="csvf" accept=".csv,text/csv" multiple><button class="btn alt" data-a="import">Import selected files</button></div>'}
 load();view();
 </script>
