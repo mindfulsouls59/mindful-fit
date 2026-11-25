@@ -1,9 +1,18 @@
-// Saves the app files on the phone so Mindful Fit opens without internet.
-// If you change the app later, change the number in CACHE (v1 -> v2).
-var CACHE = "mindful-fit-v4";
+// Mindful Fit offline helper.
+// Online: always checks for the newest version of the app.
+// Offline: opens the copy saved on your phone.
+// If you change the app later, change the number in CACHE (v5 -> v6).
+var CACHE = "mindful-fit-v5";
 var FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 self.addEventListener("install", function (e) {
-  e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(FILES); }));
+  e.waitUntil(caches.open(CACHE).then(function (c) {
+    return Promise.all(FILES.map(function (u) {
+      return fetch(u, { cache: "reload" }).then(function (r) {
+        if (!r.ok) throw new Error("bad response");
+        return c.put(u, r);
+      });
+    }));
+  }));
   self.skipWaiting();
 });
 self.addEventListener("activate", function (e) {
@@ -14,7 +23,15 @@ self.addEventListener("activate", function (e) {
 });
 self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
-  e.respondWith(caches.match(e.request).then(function (hit) {
-    return hit || fetch(e.request).catch(function () { return caches.match("./index.html"); });
-  }));
+  e.respondWith(
+    fetch(e.request, { cache: "no-cache" }).then(function (r) {
+      if (r && r.ok && new URL(e.request.url).origin === self.location.origin) {
+        var copy = r.clone();
+        caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+      }
+      return r;
+    }).catch(function () {
+      return caches.match(e.request).then(function (hit) { return hit || caches.match("./index.html"); });
+    })
+  );
 });
