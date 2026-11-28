@@ -2,7 +2,7 @@
 // Online: always checks for the newest version of the app.
 // Offline: opens the copy saved on your phone.
 // If you change the app later, change the number in CACHE (v5 -> v6).
-var CACHE = "mindful-fit-v6";
+var CACHE = "mindful-fit-v7";
 var FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) {

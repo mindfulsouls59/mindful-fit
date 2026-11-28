@@ -133,7 +133,7 @@ function view(){var h="";
   if(U.tab==="checkin"){var C=D.checkins[U.cd||today()]||{};
     h='<h1>Daily check-in</h1><p class="sub">A reflection aid, not an assessment. Skip any day you like.</p><div class="card"><h2>Morning</h2>'+inp("sh","Sleep (hours)","number",'inputmode="decimal"')+"<label>Sleep quality (1-10)</label>"+chips("sq",[1,2,3,4,5,6,7,8,9,10].map(function(n){return[n,n]}),U.sq||"")+"<label>Overall readiness (1-5)</label>"+chips("rd",[1,2,3,4,5].map(function(n){return[n,n]}),U.rd)+"<label>This morning, are you feeling...</label>"+chips("f",FEEL,Object.keys(U.f).filter(function(k){return U.f[k]}),true)+'<button class="btn" data-a="savemorning">Save morning check-in</button>'+(U.light?'<div class="msg">'+esc(U.light)+"</div>":"")+'</div><div class="card"><h2>End of day</h2><p class="sub">How did the whole day feel?</p>'+chips("col",[["Green","Green"],["Orange","Orange"],["Red","Red"]],U.col)+"<label>What did you do today?</label>"+chips("acts",ACTS,U.acts,true)+inp("moment","A small moment of interest, ease or satisfaction (optional)","text",'maxlength="140"')+'<button class="btn" data-a="saveevening">Save evening check-in</button>'+(U.eMsg?'<div class="msg">'+esc(U.eMsg)+"</div>":"")+'</div><p class="small">Your check-ins stay on this phone. If you are struggling, please reach out to someone you trust or a professional.</p>'}
   if(U.tab==="progress"){h=progressHTML()}
-  if(U.tab==="more"){h='<h1>Backup</h1><p class="sub">Your data lives in this phone’s browser. Copy a backup now and then, in case the browser clears its storage.</p><div class="card"><h2>Copy backup</h2><textarea id="bk" readonly>'+esc(JSON.stringify(D))+'</textarea><button class="btn" data-a="copy">Copy backup</button></div><div class="card"><h2>Restore</h2><textarea id="rs" placeholder="Paste a backup here"></textarea><button class="btn alt" data-a="restore">Restore from pasted backup</button>'+(U.msg?'<div class="msg">'+esc(U.msg)+"</div>":"")+'</div>'+importCard()+'<p class="small">Mindful Fit is a personal reflection and training aid. It is not medical advice or treatment.</p>'}
+  if(U.tab==="more"){h='<h1>Backup</h1><p class="sub">Your data lives in this phone’s browser. Copy a backup now and then, in case the browser clears its storage.</p><div class="card"><h2>Copy backup</h2><textarea id="bk" readonly>'+esc(JSON.stringify(D))+'</textarea><button class="btn" data-a="copy">Copy backup</button></div><div class="card"><h2>Restore</h2><textarea id="rs" placeholder="Paste a backup here"></textarea><button class="btn alt" data-a="restore">Restore from pasted backup</button>'+(U.msg?'<div class="msg">'+esc(U.msg)+"</div>":"")+'</div>'+reviewCard()+importCard()+'<p class="small">Mindful Fit is a personal reflection and training aid. It is not medical advice or treatment.</p>'}
   document.getElementById("app").innerHTML=h;
   document.getElementById("nav").innerHTML=TABS.map(function(t){return'<button class="'+(U.tab===t[0]?"on":"")+'" data-a="tab" data-v="'+t[0]+'">'+t[1]+"</button>"}).join("")}
 document.addEventListener("input",function(e){var k=e.target.getAttribute&&e.target.getAttribute("data-k");if(k)U[k]=e.target.value});
@@ -150,6 +150,8 @@ document.addEventListener("click",function(e){var b=e.target.closest("[data-a]")
   else if(a==="undo"){if(U.type==="Cardio"&&D.cardio.length){var c=D.cardio.pop();U.msg="Removed "+c.act+" ("+c.d+")."}else if(D.sets.length){var s=D.sets.pop();U.msg="Removed "+s.lift+" ("+s.d+")."}else U.msg="Nothing to undo.";save()}
   else if(a==="savemorning")saveMorning();
   else if(a==="saveevening")saveEvening();
+  else if(a==="rev"){U.rev=reviewText(parseInt(v,10))}
+  else if(a==="revcopy"){var rt=document.getElementById("rv");rt.select();try{navigator.clipboard.writeText(rt.value).then(function(){U.msg="Summary copied.";view()},function(){U.msg="Select the text and copy it manually.";view()})}catch(x){U.msg="Select the text and copy it manually."}return}
   else if(a==="copy"){var t=document.getElementById("bk");t.select();try{navigator.clipboard.writeText(t.value).then(function(){U.msg="Copied. Paste it somewhere safe.";view()},function(){U.msg="Select the text above and copy it manually.";view()})}catch(x){U.msg="Select the text above and copy it manually."}return}
   else if(a==="import"){var fs=document.getElementById("csvf").files;if(!fs.length){U.msg="Please choose your CSV files first."}else{var nf=fs.length,dn=0,out=[];Array.prototype.forEach.call(fs,function(f){var r=new FileReader();r.onload=function(){try{out.push(importText(String(r.result)))}catch(x){out.push("could not read "+f.name)}if(++dn===nf){save();U.msg="Imported: "+out.join("; ");view()}};r.onerror=function(){out.push("could not open "+f.name);if(++dn===nf){save();U.msg="Imported: "+out.join("; ");view()}};r.readAsText(f)});return}}
   else if(a==="restore"){try{var o=JSON.parse(document.getElementById("rs").value);if(!o||!Array.isArray(o.sets))throw 0;D=Object.assign({sets:[],cardio:[],sessions:[],checkins:{},bw:"50"},o);save();U.msg="Restored."}catch(x){U.msg="That does not look like a Mindful Fit backup."}}
@@ -166,7 +168,7 @@ function saveLog(markOnly){var d=dateOk();if(!d)return;
   if(!lift||ld===null||rp===null||pe===null||bw===null||rp!==Math.round(rp)){U.msg="Please fill in exercise, load, whole reps, RPE (1 to 10) and bodyweight.";return}
   D.bw=String(bw);D.sets.push({d:d,lift:lift,load:ld,reps:rp,rpe:pe,bw:bw,r:EX.indexOf(lift)>-1?reg(lift):(U.type==="Lower"?"Lower":"Upper")});addSession(d,U.type);save();U.msg=lift+" saved. Session: "+LABEL[U.type]+".";U.load=U.reps=U.rpe=""}
 function saveMorning(){var sh=num(U.sh,0,16);if(sh===null||!U.sq){U.light="Please enter sleep hours and pick a sleep quality.";return}
-  var c={sh:sh,sq:U.sq,rd:U.rd,f:Object.assign({},U.f)},old=D.checkins[today()]||{};D.checkins[today()]=Object.assign(old,c);save();U.light="Saved.\n"+light(c).text}
+  var c={sh:sh,sq:U.sq,rd:U.rd,f:Object.assign({},U.f),fv:1},old=D.checkins[today()]||{};D.checkins[today()]=Object.assign(old,c);save();U.light="Saved.\n"+light(c).text}
 function saveEvening(){var o=D.checkins[today()]||{};o.col=U.col;o.acts=U.acts.slice();o.moment=(U.moment||"").trim().slice(0,140);D.checkins[today()]=o;save();U.eMsg="Saved: today felt "+U.col+". Thank you for checking in."}
 
 function parseCSV(t){var rows=[],r=[],f="",q=0,i,c;t=t.replace(/^\uFEFF/,"");for(i=0;i<t.length;i++){c=t[i];if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++}else q=0}else f+=c}else if(c==='"')q=1;else if(c===","){r.push(f);f=""}else if(c==="\n"||c==="\r"){if(c==="\r"&&t[i+1]==="\n")i++;r.push(f);f="";if(r.length>1||r[0]!=="")rows.push(r);r=[]}else f+=c}if(f!==""||r.length){r.push(f);rows.push(r)}return rows}
@@ -227,6 +229,41 @@ function gxHTML(){var have=EX.filter(function(l){return D.sets.some(function(s){
   return'<div class="card"><h2>Graph any exercise</h2><select data-k="gx">'+have.map(function(l){return'<option value="'+esc(l)+'"'+(l===sel?" selected":"")+">"+esc(l)+"</option>"}).join("")+'</select>'
    +'<p class="small"><b style="color:var(--acc)">●</b> Heaviest set (kg) &nbsp; <b style="color:#e08a2c">●</b> Estimated 1RM (kg, dashed)</p>'+gxSvg(days,"str")
    +'<p class="small">Total volume per session (kg x reps)</p>'+gxSvg(days,"vol")+"</div>"}
+var MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],COLS=["Green","Orange","Red"],FLAB={flat:"flat or numb",calm:"calm or at ease",interested:"interested in something"},FORDER=["restless","low","anxious","joyful","grateful","energised","flat","calm","interested"];
+function pf(x,n){var m=Math.pow(10,n),v=x*m,f=Math.floor(v);if(Math.abs(v-f-.5)<1e-9&&(f+.5)/m===x)return((f%2===0?f:f+1)/m).toFixed(n);return x.toFixed(n)}
+function isn(v){return typeof v==="number"&&isFinite(v)}
+function dm(s){var d=dt(s);return("0"+d.getDate()).slice(-2)+" "+MON[d.getMonth()]}
+function fval(c,k){if(c.f&&k in c.f)return c.f[k]?1:0;return c.fv?0:null}
+var UPX=EX.filter(function(l){return LOWER.indexOf(l)<0&&l!=="Kneeling Cable Crunch"}).concat(["Smith Machine Incline Press"]);
+function dayKinds(){var cnt={},k={},g={},cm={},ss={};
+  D.sets.forEach(function(s){var r=LOWER.indexOf(s.lift)>-1?"L":UPX.indexOf(s.lift)>-1?"U":null;if(!r)return;var o=cnt[s.d]||(cnt[s.d]={U:0,L:0});o[r]++});
+  Object.keys(cnt).forEach(function(d){var u=cnt[d].U,l=cnt[d].L;g[d]=u>=3&&l>=3?"Full":u>=3?"Upper":l>=3?"Lower":"Light";k[d]=[g[d]]});
+  D.cardio.forEach(function(c){cm[c.d]=(cm[c.d]||0)+c.min});Object.keys(cm).forEach(function(d){if(!k[d]&&cm[d]>=20)k[d]=["Cardio"]});
+  D.sessions.forEach(function(s){(ss[s.d]=ss[s.d]||[]).indexOf(s.t)<0&&ss[s.d].push(s.t)});
+  Object.keys(ss).forEach(function(d){var v=ss[d].slice();if(v.length===1&&v[0]==="Cardio"&&(g[d]==="Upper"||g[d]==="Lower"||g[d]==="Full"))v.push(g[d]);k[d]=v});return k}
+function reviewText(w,t){t=t||today();var st=addDays(t,-(w*7-1)),rows=Object.keys(D.checkins).sort().filter(function(k){return k>=st&&k<=t}).map(function(k){return{d:k,c:D.checkins[k]}}),
+  mo=rows.filter(function(r){return isn(r.c.sh)}),co=rows.filter(function(r){return COLS.indexOf(r.c.col)>-1});
+  function mean(a){var v=a.filter(isn);return v.length?v.reduce(function(x,y){return x+y},0)/v.length:null}
+  function f1(x){return x===null?"nan":pf(x,1)}
+  var L=["Check-in review: "+dm(st)+" to "+dm(t)+" "+t.slice(0,4)+" ("+w+" weeks)","","Morning check-ins: "+mo.length+" of "+w*7+" days. Day colours recorded: "+co.length+"."];
+  if(!mo.length&&!co.length)L.push("","No check-ins in this period yet.");
+  if(mo.length){L.push("","Sleep","  Average "+f1(mean(mo.map(function(r){return r.c.sh})))+" hours, quality "+f1(mean(mo.map(function(r){return r.c.sq})))+"/10, readiness "+f1(mean(mo.map(function(r){return r.c.rd})))+"/5","  Nights under 6 hours: "+mo.filter(function(r){return r.c.sh<6}).length)}
+  if(co.length){var cn={};co.forEach(function(r){cn[r.c.col]=(cn[r.c.col]||0)+1});L.push("","How the days felt","  "+COLS.map(function(c){return c+" "+(cn[c]||0)}).join(", "));
+    var sh=[];COLS.forEach(function(c){var v=co.filter(function(r){return r.c.col===c&&isn(r.c.sh)}).map(function(r){return r.c.sh});if(v.length>=2)sh.push(c+" days: "+f1(mean(v))+" h")});if(sh.length>=2)L.push("  Average sleep before each: "+sh.join(", "))}
+  if(mo.length){var fr=[];FORDER.forEach(function(k){var kn=mo.map(function(r){return fval(r.c,k)}).filter(function(v){return v!==null});if(kn.length){var tk=kn.reduce(function(a,b){return a+b},0);fr.push({s:tk/kn.length,k:k,t:tk,n:kn.length})}});
+    function srt(a){return a.sort(function(x,y){return y.s-x.s||(x.k<y.k?1:x.k>y.k?-1:0)})}
+    if(fr.length){L.push("","Feelings ticked in the morning (most often first)");
+      function row(x,tail){var lb=FLAB[x.k]||x.k;while(lb.length<24)lb+=" ";return"  "+lb+x.t+" of "+x.n+" days ("+tail+")"}
+      srt(fr.filter(function(x){return x.n>=3})).forEach(function(x){L.push(row(x,pf(x.s*100,0)+"%"))});srt(fr.filter(function(x){return x.n<3})).forEach(function(x){L.push(row(x,"too few days yet"))})}}
+  if(co.length>=6){L.push("","Activities and how the days felt (patterns, not proof)");ACTS.forEach(function(a){var has=co.filter(function(r){return(r.c.acts||[]).indexOf(a[0])>-1}),no=co.filter(function(r){return(r.c.acts||[]).indexOf(a[0])<0});
+    if(has.length<3||no.length<3){L.push("  "+a[1]+": needs more days ("+has.length+" with, "+no.length+" without)");return}
+    function mix(f){return COLS.map(function(c){return f.filter(function(r){return r.c.col===c}).length}).join("/")}
+    L.push("  "+a[1]+": with it "+mix(has)+", without "+mix(no)+"  (Green/Orange/Red)")})}
+  var ct={},ps=[],DK=dayKinds();Object.keys(DK).forEach(function(d){if(d>=st&&d<=t)DK[d].forEach(function(x){ct[x]=(ct[x]||0)+1})});["Upper","Lower","Full","Cardio"].forEach(function(k){if(ct[k])ps.push(LABEL[k]+" "+ct[k])});if(ps.length)L.push("","Training sessions logged: "+ps.join(", "));
+  var cm=0;D.cardio.forEach(function(c){if(c.d>=st&&c.d<=t)cm+=c.min});if(cm)L.push("Cardio minutes logged: "+cm);
+  var mm=rows.filter(function(r){return String(r.c.moment||"").trim()!==""}).slice(-8);if(mm.length){L.push("","Small moments you noted");mm.forEach(function(r){L.push("  "+dm(r.d)+": "+r.c.moment)})}
+  L.push("","This is a self-reported reflection, not an assessment. Share it only if you wish.");return L.join("\n")}
+function reviewCard(){return'<div class="card"><h2>Review &amp; Summary</h2><p class="small">A plain look back at your check-ins, sleep and training. Patterns, not proof. It stays on this phone unless you copy it.</p>'+["2","4","8"].map(function(n){return'<button class="btn alt" data-a="rev" data-v="'+n+'">Last '+n+' weeks</button>'}).join("")+(U.rev?'<textarea id="rv" readonly style="min-height:300px;margin-top:10px">'+esc(U.rev)+'</textarea><button class="btn" data-a="revcopy">Copy summary</button>':"")+"</div>"}
 function importCard(){return'<div class="card"><h2>Import laptop files</h2><p class="small">Choose your CSV files (workout_log, cardio_log, sessions, checkins). For every date in a file, the file replaces what is on this phone for that date. Your files stay on this phone.</p><input type="file" id="csvf" accept=".csv,text/csv" multiple><button class="btn alt" data-a="import">Import selected files</button></div>'}
 load();view();
 </script>
